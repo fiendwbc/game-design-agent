@@ -12,7 +12,7 @@
 * **大脑 (Reasoning):** `Google Gemini 3 Pro`
     * 利用其 **2M+ Token 上下文** 处理长时间的游戏历史记忆。
     * 利用其 **原生视频理解能力** 分析动态特效、数值跳动和打击感。
-* **中枢 (Orchestration):** `LangGraph`
+* **中枢 (Orchestration):** `LangChain==1.2.1 && LangGraph`
     * 负责管理状态机（Thinking -> Acting -> Recording）。
     * 使用 **Pydantic** 强制约束 AI 输出标准的 JSON 格式指令。
 * **眼睛 (Vision):** `mss` + `OpenCV`
