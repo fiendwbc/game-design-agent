@@ -181,10 +181,10 @@ def select_region(
 @app.command()
 def run(
     config_file: Optional[Path] = typer.Option(
-        None,
+        Path("config.json"),
         "--config",
         "-c",
-        help="Path to configuration file",
+        help="Path to configuration file (default: config.json)",
     ),
     max_steps: int = typer.Option(
         100,
@@ -212,10 +212,10 @@ def run(
         "-l",
         help="Logging level: minimal, detailed, or debug",
     ),
-    region_x: int = typer.Option(100, "--x", help="Window region X coordinate"),
-    region_y: int = typer.Option(100, "--y", help="Window region Y coordinate"),
-    region_width: int = typer.Option(800, "--width", "-W", help="Window region width"),
-    region_height: int = typer.Option(600, "--height", "-H", help="Window region height"),
+    region_x: Optional[int] = typer.Option(None, "--x", help="Window region X coordinate (overrides config)"),
+    region_y: Optional[int] = typer.Option(None, "--y", help="Window region Y coordinate (overrides config)"),
+    region_width: Optional[int] = typer.Option(None, "--width", "-W", help="Window region width (overrides config)"),
+    region_height: Optional[int] = typer.Option(None, "--height", "-H", help="Window region height (overrides config)"),
     dry_run: bool = typer.Option(
         False,
         "--dry-run",
@@ -227,6 +227,7 @@ def run(
 
     Starts automated gameplay on the specified window region,
     analyzes the game, and generates design documents.
+    Reads window region from config.json by default.
     """
     from .orchestrator.graph import run_game_session
 
@@ -238,16 +239,19 @@ def run(
     if init_langsmith():
         console.print("[dim]LangSmith tracing enabled[/dim]")
 
-    # Load config from file if provided
+    # Default region values
+    x, y, w, h = 100, 100, 800, 600
+
+    # Load config from file if exists
     if config_file and config_file.exists():
         try:
             file_config = json.loads(config_file.read_text())
             if "window_region" in file_config:
                 wr = file_config["window_region"]
-                region_x = wr.get("x", region_x)
-                region_y = wr.get("y", region_y)
-                region_width = wr.get("width", region_width)
-                region_height = wr.get("height", region_height)
+                x = wr.get("x", x)
+                y = wr.get("y", y)
+                w = wr.get("width", w)
+                h = wr.get("height", h)
             if "max_steps" in file_config:
                 max_steps = file_config["max_steps"]
             if "strategy" in file_config:
@@ -256,12 +260,22 @@ def run(
         except Exception as e:
             console.print(f"[yellow]Warning: Failed to load config: {e}[/yellow]")
 
+    # Command line options override config file
+    if region_x is not None:
+        x = region_x
+    if region_y is not None:
+        y = region_y
+    if region_width is not None:
+        w = region_width
+    if region_height is not None:
+        h = region_height
+
     # Create window region
     window_region = WindowRegion(
-        x=region_x,
-        y=region_y,
-        width=region_width,
-        height=region_height,
+        x=x,
+        y=y,
+        width=w,
+        height=h,
     )
 
     # Create session config
@@ -277,7 +291,7 @@ def run(
     config_table = Table(title="Session Configuration")
     config_table.add_column("Setting", style="cyan")
     config_table.add_column("Value", style="green")
-    config_table.add_row("Region", f"({region_x}, {region_y}) {region_width}x{region_height}")
+    config_table.add_row("Region", f"({x}, {y}) {w}x{h}")
     config_table.add_row("Strategy", strategy.value)
     config_table.add_row("Max Steps", str(max_steps))
     config_table.add_row("Output", str(output_dir))
