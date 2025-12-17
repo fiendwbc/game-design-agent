@@ -42,6 +42,7 @@ class ActionType(str, Enum):
 class ActionResult(str, Enum):
     """Result of an action execution."""
 
+    PENDING = "pending"
     SUCCESS = "success"
     FAILED = "failed"
     SKIPPED = "skipped"

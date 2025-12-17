@@ -1,12 +1,14 @@
 """LangGraph state schema and graph definition."""
 
+from pathlib import Path
 from typing import Annotated, Any, Optional, TypedDict
 
 from langgraph.graph import StateGraph
 from langgraph.graph.message import add_messages
 
 from ..models import SessionStatus
-from ..models.session import ActionCommand, AnalysisLog, PlaySession
+from ..models.session import ActionCommand, AnalysisLog, PlaySession, WindowRegion
+from ..utils.logging import get_logger
 
 
 class GameState(TypedDict):
@@ -27,9 +29,16 @@ class GameState(TypedDict):
     # Visual input (set by Observe node)
     current_screenshot: Optional[bytes]
     current_video: Optional[bytes]
+    post_action_screenshot: Optional[bytes]
+    reaction_video: Optional[bytes]
 
     # Action output (set by Think node)
     pending_action: Optional[ActionCommand]
+    action_result: Optional[Any]
+
+    # Game state detection
+    game_over: bool
+    level_complete: bool
 
     # Analysis results (accumulated by analysis agents)
     analysis_log: Annotated[list[AnalysisLog], add_messages]
@@ -60,7 +69,12 @@ def create_initial_state(session: PlaySession) -> GameState:
         max_steps=session.config.max_steps,
         current_screenshot=None,
         current_video=None,
+        post_action_screenshot=None,
+        reaction_video=None,
         pending_action=None,
+        action_result=None,
+        game_over=False,
+        level_complete=False,
         analysis_log=[],
         mechanics_state={},
         ui_flow_graph={"nodes": [], "edges": []},
@@ -132,8 +146,156 @@ def build_game_graph() -> StateGraph:
     return graph
 
 
+def run_game_session(
+    session: PlaySession,
+    on_step: Optional[callable] = None,
+) -> GameState:
+    """Run a complete game analysis session.
+
+    Args:
+        session: PlaySession configuration.
+        on_step: Optional callback called after each step with (step, state).
+
+    Returns:
+        Final GameState after session completes.
+    """
+    from .nodes import init_session_resources, cleanup_session_resources
+
+    logger = get_logger()
+    logger.info(f"Starting game session: {session.id}")
+
+    # Initialize session resources
+    init_session_resources(
+        region=session.config.window_region,
+        session_id=session.id,
+        output_dir=session.config.output_dir,
+    )
+
+    try:
+        # Build and compile the graph
+        graph = build_game_graph()
+        compiled = graph.compile()
+
+        # Create initial state
+        state = create_initial_state(session)
+
+        # Run the graph
+        final_state = None
+        for step_state in compiled.stream(state):
+            # Get the actual state from the step output
+            if isinstance(step_state, dict):
+                for node_name, node_state in step_state.items():
+                    final_state = node_state
+
+                    # Call step callback if provided
+                    if on_step and "current_step" in node_state:
+                        on_step(node_state["current_step"], node_state)
+
+        logger.info(f"Session completed: {final_state.get('status', 'unknown')}")
+        return final_state or state
+
+    except KeyboardInterrupt:
+        logger.info("Session interrupted by user")
+        return create_initial_state(session)
+
+    except Exception as e:
+        logger.error(f"Session failed: {e}")
+        state = create_initial_state(session)
+        state["error"] = str(e)
+        state["status"] = SessionStatus.FAILED
+        return state
+
+    finally:
+        cleanup_session_resources()
+
+
+def run_single_step(
+    state: GameState,
+    graph: Optional[StateGraph] = None,
+) -> GameState:
+    """Run a single step of the game loop.
+
+    Useful for debugging and testing individual steps.
+
+    Args:
+        state: Current GameState.
+        graph: Optional pre-built graph (created if not provided).
+
+    Returns:
+        Updated GameState after one complete loop.
+    """
+    from .nodes import (
+        observe_node,
+        think_node,
+        act_node,
+        record_node,
+        analyze_node,
+        update_memory_node,
+        check_continue_node,
+    )
+
+    # Run nodes sequentially
+    state = observe_node(state)
+    state = think_node(state)
+    state = act_node(state)
+    state = record_node(state)
+    state = analyze_node(state)
+    state = update_memory_node(state)
+    state = check_continue_node(state)
+
+    return state
+
+
+class SessionRunner:
+    """High-level session runner with progress tracking.
+
+    Provides a convenient interface for running game sessions
+    with callbacks and progress reporting.
+    """
+
+    def __init__(self, session: PlaySession) -> None:
+        """Initialize session runner.
+
+        Args:
+            session: PlaySession configuration.
+        """
+        self.session = session
+        self.logger = get_logger()
+        self._callbacks: list[callable] = []
+        self._state: Optional[GameState] = None
+
+    def add_callback(self, callback: callable) -> None:
+        """Add a step callback.
+
+        Args:
+            callback: Function called with (step, state) after each step.
+        """
+        self._callbacks.append(callback)
+
+    def run(self) -> GameState:
+        """Run the session.
+
+        Returns:
+            Final GameState.
+        """
+        def combined_callback(step: int, state: GameState) -> None:
+            self._state = state
+            for callback in self._callbacks:
+                callback(step, state)
+
+        return run_game_session(self.session, on_step=combined_callback)
+
+    @property
+    def state(self) -> Optional[GameState]:
+        """Get current state (updated during run)."""
+        return self._state
+
+
 __all__ = [
     "GameState",
     "create_initial_state",
     "build_game_graph",
+    "run_game_session",
+    "run_single_step",
+    "SessionRunner",
 ]

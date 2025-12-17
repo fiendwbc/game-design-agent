@@ -79,35 +79,35 @@
 
 ### Capture Module
 
-- [ ] T021 [P] [US1] Implement screen capture with mss (30+ FPS) in src/capture/screen.py
-- [ ] T022 [P] [US1] Implement video segment synthesis with OpenCV in src/capture/video.py
-- [ ] T023 [US1] Add region selection utility for window capture in src/capture/screen.py
+- [x] T021 [P] [US1] Implement screen capture with mss (30+ FPS) in src/capture/screen.py
+- [x] T022 [P] [US1] Implement video segment synthesis with OpenCV in src/capture/video.py
+- [x] T023 [US1] Add region selection utility for window capture in src/capture/screen.py
 
 ### Control Module
 
-- [ ] T024 [US1] Implement input controller with pydirectinput in src/control/input.py
-- [ ] T025 [US1] Add coordinate normalization (0-1000 to screen coords) in src/control/input.py
+- [x] T024 [US1] Implement input controller with pydirectinput in src/control/input.py
+- [x] T025 [US1] Add coordinate normalization (0-1000 to screen coords) in src/control/input.py
 
 ### Player-Agent
 
-- [ ] T026 [US1] Implement Player-Agent with gemini-2.0-flash in src/agents/player.py
-- [ ] T027 [US1] Create action parsing prompt for click/drag/press/wait commands in src/agents/player.py
-- [ ] T028 [US1] Add game-over/completion detection logic in src/agents/player.py
+- [x] T026 [US1] Implement Player-Agent with gemini-2.0-flash in src/agents/player.py
+- [x] T027 [US1] Create action parsing prompt for click/drag/press/wait commands in src/agents/player.py
+- [x] T028 [US1] Add game-over/completion detection logic in src/agents/player.py
 
 ### Memory Module (Play Log)
 
-- [ ] T029 [US1] Implement play_log memory module in src/memory/play_log.py
+- [x] T029 [US1] Implement play_log memory module in src/memory/play_log.py
 
 ### Orchestrator Integration
 
-- [ ] T030 [US1] Implement observe-think-act-record loop in src/orchestrator/nodes.py
-- [ ] T031 [US1] Add step limiting and session termination in src/orchestrator/graph.py
+- [x] T030 [US1] Implement observe-think-act-record loop in src/orchestrator/nodes.py
+- [x] T031 [US1] Add step limiting and session termination in src/orchestrator/graph.py
 
 ### CLI Commands
 
-- [ ] T032 [US1] Add `select-region` command in src/main.py
-- [ ] T033 [US1] Add `run` command with session configuration in src/main.py
-- [ ] T034 [US1] Add progress display with rich in src/main.py
+- [x] T032 [US1] Add `select-region` command in src/main.py
+- [x] T033 [US1] Add `run` command with session configuration in src/main.py
+- [x] T034 [US1] Add progress display with rich in src/main.py
 
 **Checkpoint**: User Story 1 complete - system can play games automatically
 
