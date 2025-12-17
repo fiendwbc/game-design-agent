@@ -4,6 +4,7 @@ Provides 30+ FPS screen capture for game analysis.
 """
 
 import io
+import sys
 import time
 from dataclasses import dataclass, field
 from typing import Generator, Optional
@@ -15,6 +16,51 @@ from PIL import Image
 
 from ..models.session import WindowRegion
 from ..utils.logging import get_logger
+
+
+def _set_dpi_awareness() -> bool:
+    """Set DPI awareness for accurate screen coordinates on Windows.
+
+    Returns:
+        True if DPI awareness was set successfully.
+    """
+    if sys.platform != "win32":
+        return False
+
+    try:
+        import ctypes
+
+        # Try SetProcessDpiAwarenessContext (Windows 10 1703+)
+        try:
+            ctypes.windll.user32.SetProcessDpiAwarenessContext(
+                ctypes.c_void_p(-4)  # DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2
+            )
+            return True
+        except (AttributeError, OSError):
+            pass
+
+        # Fallback to SetProcessDpiAwareness (Windows 8.1+)
+        try:
+            ctypes.windll.shcore.SetProcessDpiAwareness(2)  # PROCESS_PER_MONITOR_DPI_AWARE
+            return True
+        except (AttributeError, OSError):
+            pass
+
+        # Fallback to SetProcessDPIAware (Windows Vista+)
+        try:
+            ctypes.windll.user32.SetProcessDPIAware()
+            return True
+        except (AttributeError, OSError):
+            pass
+
+    except Exception:
+        pass
+
+    return False
+
+
+# Set DPI awareness on module load
+_dpi_aware = _set_dpi_awareness()
 
 
 @dataclass
@@ -272,15 +318,31 @@ class RegionSelector:
 
             user32 = ctypes.windll.user32
 
-            # Find window by title
+            # Find window by title (supports partial match)
             hwnd = user32.FindWindowW(None, title)
             if not hwnd:
-                self._logger.warning(f"Window not found: {title}")
-                return None
+                # Try partial match by enumerating windows
+                hwnd = self._find_window_partial(title)
+                if not hwnd:
+                    self._logger.warning(f"Window not found: {title}")
+                    return None
 
-            # Get window rect
+            # Get window rect using DwmGetWindowAttribute for accurate bounds
             rect = wintypes.RECT()
-            user32.GetWindowRect(hwnd, ctypes.byref(rect))
+
+            try:
+                # Try DwmGetWindowAttribute for accurate extended frame bounds
+                dwmapi = ctypes.windll.dwmapi
+                DWMWA_EXTENDED_FRAME_BOUNDS = 9
+                dwmapi.DwmGetWindowAttribute(
+                    hwnd,
+                    DWMWA_EXTENDED_FRAME_BOUNDS,
+                    ctypes.byref(rect),
+                    ctypes.sizeof(rect),
+                )
+            except (AttributeError, OSError):
+                # Fallback to GetWindowRect
+                user32.GetWindowRect(hwnd, ctypes.byref(rect))
 
             region = WindowRegion(
                 x=rect.left,
@@ -295,6 +357,46 @@ class RegionSelector:
         except Exception as e:
             self._logger.error(f"Error finding window: {e}")
             return None
+
+    def _find_window_partial(self, partial_title: str) -> Optional[int]:
+        """Find window by partial title match.
+
+        Args:
+            partial_title: Partial window title to search for.
+
+        Returns:
+            Window handle (hwnd) or None if not found.
+        """
+        result = [None]
+
+        try:
+            import ctypes
+
+            user32 = ctypes.windll.user32
+            partial_lower = partial_title.lower()
+
+            def enum_callback(hwnd, _):
+                if user32.IsWindowVisible(hwnd):
+                    length = user32.GetWindowTextLengthW(hwnd)
+                    if length > 0:
+                        buf = ctypes.create_unicode_buffer(length + 1)
+                        user32.GetWindowTextW(hwnd, buf, length + 1)
+                        if partial_lower in buf.value.lower():
+                            result[0] = hwnd
+                            return False  # Stop enumeration
+                return True
+
+            WNDENUMPROC = ctypes.WINFUNCTYPE(
+                ctypes.c_bool,
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+            )
+            user32.EnumWindows(WNDENUMPROC(enum_callback), 0)
+
+        except Exception:
+            pass
+
+        return result[0]
 
     def list_windows(self) -> list[str]:
         """List all visible window titles (Windows-specific).

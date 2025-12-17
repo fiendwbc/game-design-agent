@@ -512,10 +512,16 @@ def status() -> None:
 
 @app.command()
 def test_capture(
-    region_x: int = typer.Option(100, "--x", help="Region X coordinate"),
-    region_y: int = typer.Option(100, "--y", help="Region Y coordinate"),
-    region_width: int = typer.Option(800, "--width", "-W", help="Region width"),
-    region_height: int = typer.Option(600, "--height", "-H", help="Region height"),
+    config_file: Optional[Path] = typer.Option(
+        Path("config.json"),
+        "--config",
+        "-c",
+        help="Path to configuration file",
+    ),
+    region_x: Optional[int] = typer.Option(None, "--x", help="Region X coordinate"),
+    region_y: Optional[int] = typer.Option(None, "--y", help="Region Y coordinate"),
+    region_width: Optional[int] = typer.Option(None, "--width", "-W", help="Region width"),
+    region_height: Optional[int] = typer.Option(None, "--height", "-H", help="Region height"),
     output: Path = typer.Option(
         Path("./test_capture.png"),
         "--output",
@@ -526,14 +532,41 @@ def test_capture(
     """Test screen capture with the specified region.
 
     Captures a single screenshot and saves it to verify
-    the capture region is correct.
+    the capture region is correct. Reads region from config.json by default.
     """
     from .capture.screen import capture_region
 
-    console.print(f"Capturing region: ({region_x}, {region_y}) {region_width}x{region_height}")
+    # Default values
+    x, y, w, h = 100, 100, 800, 600
+
+    # Load from config file if exists
+    if config_file and config_file.exists():
+        try:
+            file_config = json.loads(config_file.read_text())
+            if "window_region" in file_config:
+                wr = file_config["window_region"]
+                x = wr.get("x", x)
+                y = wr.get("y", y)
+                w = wr.get("width", w)
+                h = wr.get("height", h)
+                console.print(f"[green]Loaded region from {config_file}[/green]")
+        except Exception as e:
+            console.print(f"[yellow]Warning: Failed to load config: {e}[/yellow]")
+
+    # Command line options override config file
+    if region_x is not None:
+        x = region_x
+    if region_y is not None:
+        y = region_y
+    if region_width is not None:
+        w = region_width
+    if region_height is not None:
+        h = region_height
+
+    console.print(f"Capturing region: ({x}, {y}) {w}x{h}")
 
     try:
-        screenshot = capture_region(region_x, region_y, region_width, region_height)
+        screenshot = capture_region(x, y, w, h)
         output.write_bytes(screenshot)
         console.print(f"[green]Screenshot saved to {output}[/green]")
         console.print(f"Size: {len(screenshot) / 1024:.1f} KB")
