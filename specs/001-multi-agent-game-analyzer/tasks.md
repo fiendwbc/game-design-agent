@@ -32,14 +32,14 @@
 
 **Purpose**: Project initialization and basic structure
 
-- [ ] T001 Create project directory structure per plan.md in src/
-- [ ] T002 Initialize Python project with uv and create pyproject.toml
-- [ ] T003 Add core dependencies: langchain>=1.0, langgraph>=1.0, google-genai>=1.50
-- [ ] T004 [P] Add utility dependencies: opencv-python, mss, pydirectinput, pydantic>=2.0
-- [ ] T005 [P] Add CLI dependencies: typer, rich
-- [ ] T006 [P] Add dev dependencies: pytest, pytest-asyncio, ruff, mypy
-- [ ] T007 [P] Configure ruff and mypy in pyproject.toml
-- [ ] T008 Create .env.example with GOOGLE_API_KEY placeholder
+- [x] T001 Create project directory structure per plan.md in src/
+- [x] T002 Initialize Python project with uv and create pyproject.toml
+- [x] T003 Add core dependencies: langchain>=1.0, langgraph>=1.0, google-genai>=1.50
+- [x] T004 [P] Add utility dependencies: opencv-python, mss, pydirectinput, pydantic>=2.0
+- [x] T005 [P] Add CLI dependencies: typer, rich
+- [x] T006 [P] Add dev dependencies: pytest, pytest-asyncio, ruff, mypy
+- [x] T007 [P] Configure ruff and mypy in pyproject.toml
+- [x] T008 Create .env.example with GOOGLE_API_KEY placeholder
 
 ---
 
