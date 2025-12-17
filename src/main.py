@@ -19,7 +19,7 @@ from rich.progress import (
 )
 from rich.table import Table
 
-from .config import get_config, reset_config
+from .config import get_config, reset_config, init_langsmith
 from .models import LogLevel, PlayStrategy, SessionStatus
 from .models.session import PlaySession, SessionConfig, WindowRegion
 from .utils.logging import setup_logging, get_logger
@@ -233,6 +233,10 @@ def run(
     # Setup logging
     setup_logging(level=log_level)
     logger = get_logger()
+
+    # Initialize LangSmith if configured
+    if init_langsmith():
+        console.print("[dim]LangSmith tracing enabled[/dim]")
 
     # Load config from file if provided
     if config_file and config_file.exists():
@@ -470,6 +474,14 @@ def status() -> None:
     table.add_row("Player Model", config.player_model)
     table.add_row("Analyst Model", config.analyst_model)
 
+    # LangSmith status
+    langsmith_status = "[green]Enabled[/green]" if config.langsmith_tracing else "[dim]Disabled[/dim]"
+    table.add_row("LangSmith Tracing", langsmith_status)
+    if config.langsmith_tracing:
+        langsmith_key_status = "[green]Set[/green]" if config.langsmith_api_key else "[red]Not Set[/red]"
+        table.add_row("LangSmith API Key", langsmith_key_status)
+        table.add_row("LangSmith Project", config.langsmith_project)
+
     console.print(table)
 
     # Check dependencies
@@ -483,6 +495,7 @@ def status() -> None:
         ("pydirectinput", "pydirectinput"),
         ("google-genai", "google.genai"),
         ("langgraph", "langgraph"),
+        ("langsmith", "langsmith"),
         ("rich", "rich"),
         ("typer", "typer"),
     ]

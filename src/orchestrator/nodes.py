@@ -7,6 +7,8 @@ import time
 from pathlib import Path
 from typing import Any, Optional
 
+from langsmith import traceable
+
 from ..agents.player import GameStatus, PlayerAgent
 from ..capture.screen import ScreenCapture
 from ..capture.video import VideoSynthesizer
@@ -15,6 +17,7 @@ from ..memory.play_log import PlayLog
 from ..models import ActionResult, SessionStatus
 from ..models.session import WindowRegion
 from ..utils.logging import get_logger, log_step
+from ..utils.tracing import is_tracing_enabled
 
 
 # Initialize logger
@@ -73,6 +76,7 @@ def cleanup_session_resources() -> None:
         _play_log = None
 
 
+@traceable(name="observe_node", run_type="chain")
 def observe_node(state: dict[str, Any]) -> dict[str, Any]:
     """Observe node: Capture screen/video from the game window.
 
@@ -109,6 +113,7 @@ def observe_node(state: dict[str, Any]) -> dict[str, Any]:
     return new_state
 
 
+@traceable(name="think_node", run_type="chain")
 def think_node(state: dict[str, Any]) -> dict[str, Any]:
     """Think node: Player-Agent decides the next action.
 
@@ -167,6 +172,7 @@ def think_node(state: dict[str, Any]) -> dict[str, Any]:
     return new_state
 
 
+@traceable(name="act_node", run_type="chain")
 def act_node(state: dict[str, Any]) -> dict[str, Any]:
     """Act node: Execute the pending action.
 
@@ -209,6 +215,7 @@ def act_node(state: dict[str, Any]) -> dict[str, Any]:
     return new_state
 
 
+@traceable(name="record_node", run_type="chain")
 def record_node(state: dict[str, Any]) -> dict[str, Any]:
     """Record node: Capture the reaction to the action.
 
@@ -244,6 +251,7 @@ def record_node(state: dict[str, Any]) -> dict[str, Any]:
     return new_state
 
 
+@traceable(name="analyze_node", run_type="chain")
 def analyze_node(state: dict[str, Any]) -> dict[str, Any]:
     """Analyze node: Run analysis agents on the captured data.
 
@@ -270,6 +278,7 @@ def analyze_node(state: dict[str, Any]) -> dict[str, Any]:
     return new_state
 
 
+@traceable(name="update_memory_node", run_type="chain")
 def update_memory_node(state: dict[str, Any]) -> dict[str, Any]:
     """Update memory node: Persist analysis results.
 
@@ -324,6 +333,7 @@ def _generate_observation(state: dict[str, Any]) -> str:
     return " | ".join(parts)
 
 
+@traceable(name="check_continue_node", run_type="chain")
 def check_continue_node(state: dict[str, Any]) -> dict[str, Any]:
     """Check continue node: Decide whether to continue or end.
 

@@ -1,15 +1,18 @@
 """Base agent class with Gemini integration."""
 
+import time
 from abc import ABC, abstractmethod
 from typing import Any, Optional
 
 from google import genai
 from google.genai import types
+from langsmith import traceable
 from pydantic import BaseModel
 
 from ..config import get_config
 from ..utils.logging import get_logger, log_agent, log_api_call
 from ..utils.retry import retry_api_call
+from ..utils.tracing import is_tracing_enabled
 
 
 class AgentResponse(BaseModel):
@@ -76,6 +79,41 @@ class BaseAgent(ABC):
         Returns:
             AgentResponse with content and metadata
         """
+        # Use the internal method with tracing if enabled
+        if is_tracing_enabled():
+            return self._generate_traced(prompt, images, video, json_schema)
+        else:
+            return self._generate_internal(prompt, images, video, json_schema)
+
+    @traceable(name="gemini_generate", run_type="llm")
+    def _generate_traced(
+        self,
+        prompt: str,
+        images: Optional[list[bytes]] = None,
+        video: Optional[bytes] = None,
+        json_schema: Optional[dict[str, Any]] = None,
+    ) -> AgentResponse:
+        """Traced version of generate for LangSmith."""
+        return self._generate_internal(prompt, images, video, json_schema)
+
+    def _generate_internal(
+        self,
+        prompt: str,
+        images: Optional[list[bytes]] = None,
+        video: Optional[bytes] = None,
+        json_schema: Optional[dict[str, Any]] = None,
+    ) -> AgentResponse:
+        """Internal generate implementation.
+
+        Args:
+            prompt: Text prompt
+            images: Optional list of image bytes
+            video: Optional video bytes
+            json_schema: Optional JSON schema for structured output
+
+        Returns:
+            AgentResponse with content and metadata
+        """
         log_agent(self.name, f"Generating with model {self.model}")
 
         # Build content parts
@@ -110,7 +148,6 @@ class BaseAgent(ABC):
             gen_config.response_schema = json_schema
 
         # Generate response
-        import time
         start_time = time.time()
 
         response = self.client.models.generate_content(

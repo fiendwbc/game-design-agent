@@ -63,6 +63,24 @@ class AppConfig(BaseModel):
         description="Model for analysis agents (deep reasoning)",
     )
 
+    # LangSmith configuration
+    langsmith_tracing: bool = Field(
+        default_factory=lambda: os.getenv("LANGCHAIN_TRACING_V2", "false").lower() == "true",
+        description="Enable LangSmith tracing",
+    )
+    langsmith_api_key: Optional[str] = Field(
+        default_factory=lambda: os.getenv("LANGCHAIN_API_KEY"),
+        description="LangSmith API key",
+    )
+    langsmith_project: str = Field(
+        default_factory=lambda: os.getenv("LANGCHAIN_PROJECT", "game-design-agent"),
+        description="LangSmith project name",
+    )
+    langsmith_endpoint: str = Field(
+        default_factory=lambda: os.getenv("LANGCHAIN_ENDPOINT", "https://api.smith.langchain.com"),
+        description="LangSmith API endpoint",
+    )
+
     @field_validator("google_api_key")
     @classmethod
     def validate_api_key(cls, v: str) -> str:
@@ -114,6 +132,10 @@ def get_config(validate_api_key: bool = True) -> AppConfig:
                 video_segment_duration=float(os.getenv("VIDEO_SEGMENT_DURATION", "3.0")),
                 player_model="gemini-2.0-flash",
                 analyst_model="gemini-3-pro-preview",
+                langsmith_tracing=os.getenv("LANGCHAIN_TRACING_V2", "false").lower() == "true",
+                langsmith_api_key=os.getenv("LANGCHAIN_API_KEY"),
+                langsmith_project=os.getenv("LANGCHAIN_PROJECT", "game-design-agent"),
+                langsmith_endpoint=os.getenv("LANGCHAIN_ENDPOINT", "https://api.smith.langchain.com"),
             )
     return _config
 
@@ -124,4 +146,28 @@ def reset_config() -> None:
     _config = None
 
 
-__all__ = ["AppConfig", "get_config", "reset_config"]
+def init_langsmith() -> bool:
+    """Initialize LangSmith tracing if configured.
+
+    Returns:
+        True if LangSmith was initialized, False otherwise.
+    """
+    config = get_config(validate_api_key=False)
+
+    if not config.langsmith_tracing:
+        return False
+
+    if not config.langsmith_api_key:
+        print("Warning: LANGCHAIN_TRACING_V2=true but LANGCHAIN_API_KEY not set")
+        return False
+
+    # Set environment variables for LangSmith
+    os.environ["LANGCHAIN_TRACING_V2"] = "true"
+    os.environ["LANGCHAIN_API_KEY"] = config.langsmith_api_key
+    os.environ["LANGCHAIN_PROJECT"] = config.langsmith_project
+    os.environ["LANGCHAIN_ENDPOINT"] = config.langsmith_endpoint
+
+    return True
+
+
+__all__ = ["AppConfig", "get_config", "reset_config", "init_langsmith"]
