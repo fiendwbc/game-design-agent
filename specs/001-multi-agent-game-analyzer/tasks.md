@@ -51,21 +51,21 @@
 
 ### Core Models (Shared by all stories)
 
-- [ ] T009 [P] Create base enums (SessionStatus, PlayStrategy, LogLevel, ActionType) in src/models/__init__.py
-- [ ] T010 [P] Create WindowRegion and SessionConfig models in src/models/session.py
-- [ ] T011 [P] Create NormalizedCoordinate and ActionCommand models in src/models/session.py
-- [ ] T012 [P] Create PlaySession model with full validation in src/models/session.py
-- [ ] T013 [P] Create AnalysisLog model in src/models/session.py
+- [x] T009 [P] Create base enums (SessionStatus, PlayStrategy, LogLevel, ActionType) in src/models/__init__.py
+- [x] T010 [P] Create WindowRegion and SessionConfig models in src/models/session.py
+- [x] T011 [P] Create NormalizedCoordinate and ActionCommand models in src/models/session.py
+- [x] T012 [P] Create PlaySession model with full validation in src/models/session.py
+- [x] T013 [P] Create AnalysisLog model in src/models/session.py
 
 ### Core Infrastructure
 
-- [ ] T014 Implement config management with .env support in src/config.py
-- [ ] T015 [P] Implement logging utilities with 3 levels (minimal/detailed/debug) in src/utils/logging.py
-- [ ] T016 [P] Implement retry decorator with exponential backoff in src/utils/retry.py
-- [ ] T017 Create BaseAgent abstract class with Gemini integration in src/agents/base.py
-- [ ] T018 Setup LangGraph state schema in src/orchestrator/graph.py
-- [ ] T019 Create CLI skeleton with typer in src/main.py
-- [ ] T020 Setup pytest fixtures in tests/conftest.py
+- [x] T014 Implement config management with .env support in src/config.py
+- [x] T015 [P] Implement logging utilities with 3 levels (minimal/detailed/debug) in src/utils/logging.py
+- [x] T016 [P] Implement retry decorator with exponential backoff in src/utils/retry.py
+- [x] T017 Create BaseAgent abstract class with Gemini integration in src/agents/base.py
+- [x] T018 Setup LangGraph state schema in src/orchestrator/graph.py
+- [x] T019 Create CLI skeleton with typer in src/main.py
+- [x] T020 Setup pytest fixtures in tests/conftest.py
 
 **Checkpoint**: Foundation ready - user story implementation can now begin
 
