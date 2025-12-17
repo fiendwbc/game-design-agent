@@ -5,6 +5,16 @@
 **Status**: Draft
 **Input**: User description: "Build a multi-agent AI system that automatically plays Windows mini-games (WeChat/Douyin), analyzes game mechanics through visual perception, and generates professional game design documents including GDD, numerical analysis, and art style reports."
 
+## Clarifications
+
+### Session 2025-12-16
+
+- Q: 数据持久化策略 → A: 本地文件系统存储（JSON/Markdown 文件保存到指定目录）
+- Q: AI 模型 API 调用失败处理 → A: 自动重试（最多3次），失败后暂停等待用户决定
+- Q: 用户交互界面类型 → A: 初期使用命令行界面（CLI），后期考虑 Web 界面
+- Q: 会话中断恢复能力 → A: 最终目标支持每步状态保存和精确恢复，但当前 Demo 阶段为低优先级（可选实现）
+- Q: 日志与调试级别 → A: 支持三级可配置日志：最小（仅错误）、详细（每步决策和API调用）、完整调试（含截图/视频存档）
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Automated Game Play Session (Priority: P1)
@@ -120,6 +130,10 @@ As a game designer, I want the system to self-check generated documents for comp
 
 ### Functional Requirements
 
+**User Interface**
+- **FR-025**: System MUST provide a command-line interface (CLI) for all core operations (session configuration, start/stop, export)
+- **FR-026**: System MUST support configuration files for persistent session settings (window region, max steps, output directory)
+
 **Game Capture & Control**
 - **FR-001**: System MUST capture screen regions at minimum 30 frames per second
 - **FR-002**: System MUST synthesize captured frames into video segments of 2-5 seconds duration
@@ -133,6 +147,7 @@ As a game designer, I want the system to self-check generated documents for comp
 - **FR-008**: System MUST detect game-over or completion states and end sessions appropriately
 - **FR-009**: System MUST maintain a persistent action log throughout the play session
 - **FR-010**: System MUST allow switching between exploration-priority and completion-priority play strategies
+- **FR-024**: System MUST automatically retry failed AI model API calls up to 3 times with exponential backoff; on persistent failure, pause session and prompt user to retry, skip, or abort
 
 **Multi-Agent Analysis**
 - **FR-011**: System MUST run multiple analysis agents (Mechanics, UI, Art) in parallel after each game action
@@ -151,6 +166,9 @@ As a game designer, I want the system to self-check generated documents for comp
 - **FR-020**: System MUST validate numerical data for logical consistency
 - **FR-021**: System MUST provide progress feedback during long operations (step count, current phase)
 - **FR-022**: System MUST clean up temporary files (video buffers, screenshots) after session completion
+- **FR-023**: System MUST persist all analysis results and generated documents to local file system (JSON for structured data, Markdown for documents) in a user-specified output directory
+- **FR-027**: System SHOULD support session state checkpointing to enable recovery from interruptions (low priority for initial demo; full per-step state persistence targeted for future release)
+- **FR-028**: System MUST support configurable logging levels: minimal (errors only), detailed (per-step decisions and API calls), and full debug (including screenshot/video archive for replay analysis)
 
 ### Key Entities
 

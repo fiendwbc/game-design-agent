@@ -1,0 +1,82 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "UIFlowGraph",
+  "description": "UI 流程图 - UI-Agent 输出",
+  "type": "object",
+  "properties": {
+    "nodes": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/UINode" },
+      "description": "UI 节点列表 (屏幕)"
+    },
+    "edges": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/UIEdge" },
+      "description": "UI 边列表 (转换)"
+    },
+    "current_screen": {
+      "type": ["string", "null"],
+      "description": "当前屏幕节点 ID"
+    }
+  },
+  "$defs": {
+    "UINode": {
+      "type": "object",
+      "required": ["id", "name", "screen_type", "first_seen_step"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "节点唯一标识"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "屏幕名称"
+        },
+        "screen_type": {
+          "type": "string",
+          "enum": ["menu", "gameplay", "popup", "settings", "shop", "inventory", "loading", "cutscene", "tutorial", "other"],
+          "description": "屏幕类型"
+        },
+        "first_seen_step": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "首次出现的步骤"
+        },
+        "screenshot_path": {
+          "type": ["string", "null"],
+          "description": "截图路径"
+        },
+        "description": {
+          "type": ["string", "null"],
+          "description": "屏幕描述"
+        }
+      }
+    },
+    "UIEdge": {
+      "type": "object",
+      "required": ["from_node", "to_node", "trigger", "step"],
+      "properties": {
+        "from_node": {
+          "type": "string",
+          "description": "源节点 ID"
+        },
+        "to_node": {
+          "type": "string",
+          "description": "目标节点 ID"
+        },
+        "trigger": {
+          "type": "string",
+          "minLength": 1,
+          "description": "触发动作描述"
+        },
+        "step": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "首次观察到的步骤"
+        }
+      }
+    }
+  }
+}

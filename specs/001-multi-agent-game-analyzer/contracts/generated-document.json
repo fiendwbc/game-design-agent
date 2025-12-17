@@ -1,0 +1,89 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GeneratedDocument",
+  "description": "生成的文档 - Doc-Writer 输出",
+  "type": "object",
+  "required": ["doc_type", "title", "content"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "文档唯一标识"
+    },
+    "doc_type": {
+      "type": "string",
+      "enum": ["gdd", "numerical", "art_report"],
+      "description": "文档类型"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "description": "文档标题"
+    },
+    "content": {
+      "type": "string",
+      "minLength": 1,
+      "description": "文档内容 (Markdown 格式)"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 1,
+      "description": "文档版本"
+    },
+    "qa_status": {
+      "type": "string",
+      "enum": ["pending", "passed", "failed", "revised"],
+      "default": "pending",
+      "description": "QA 状态"
+    },
+    "qa_feedback": {
+      "oneOf": [
+        { "$ref": "#/$defs/QAFeedback" },
+        { "type": "null" }
+      ],
+      "description": "QA 反馈"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "创建时间"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "更新时间"
+    },
+    "file_path": {
+      "type": ["string", "null"],
+      "description": "文件保存路径"
+    }
+  },
+  "$defs": {
+    "QAFeedback": {
+      "type": "object",
+      "properties": {
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "反馈时间"
+        },
+        "issues": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "发现的问题"
+        },
+        "suggestions": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "改进建议"
+        },
+        "missing_sections": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "缺失章节"
+        }
+      }
+    }
+  }
+}

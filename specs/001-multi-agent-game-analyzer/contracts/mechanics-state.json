@@ -1,0 +1,106 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MechanicsState",
+  "description": "游戏机制分析状态 - Mechanics-Analyst 输出",
+  "type": "object",
+  "properties": {
+    "damage_events": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/DamageEvent" },
+      "description": "伤害事件列表"
+    },
+    "economy_events": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/EconomyEvent" },
+      "description": "经济事件列表"
+    },
+    "core_loop": {
+      "type": ["string", "null"],
+      "description": "核心循环描述"
+    },
+    "level_structure": {
+      "type": "string",
+      "enum": ["wave_based", "endless", "stage_select", "linear", "roguelike", "unknown"],
+      "default": "unknown",
+      "description": "关卡结构类型"
+    },
+    "identified_mechanics": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "已识别的机制列表"
+    },
+    "last_updated": {
+      "type": "string",
+      "format": "date-time",
+      "description": "最后更新时间"
+    }
+  },
+  "$defs": {
+    "DamageEvent": {
+      "type": "object",
+      "required": ["step", "timestamp", "source", "target"],
+      "properties": {
+        "step": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "source": {
+          "type": "string",
+          "description": "伤害来源"
+        },
+        "target": {
+          "type": "string",
+          "description": "伤害目标"
+        },
+        "hp_before": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "hp_after": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "damage": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "skill_name": {
+          "type": ["string", "null"]
+        }
+      }
+    },
+    "EconomyEvent": {
+      "type": "object",
+      "required": ["step", "timestamp", "event_type", "currency_type", "amount"],
+      "properties": {
+        "step": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "event_type": {
+          "type": "string",
+          "enum": ["earn", "spend"]
+        },
+        "currency_type": {
+          "type": "string",
+          "description": "货币类型"
+        },
+        "amount": {
+          "type": "integer"
+        },
+        "source": {
+          "type": ["string", "null"],
+          "description": "来源/用途"
+        }
+      }
+    }
+  }
+}

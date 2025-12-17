@@ -1,0 +1,86 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ArtStyleState",
+  "description": "美术风格分析状态 - Art-Agent 输出",
+  "type": "object",
+  "properties": {
+    "color_palette": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Color" },
+      "maxItems": 10,
+      "description": "主色板 (最多 10 色)"
+    },
+    "style_tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "风格标签"
+    },
+    "effect_patterns": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/EffectPattern" },
+      "description": "特效模式列表"
+    },
+    "ui_style": {
+      "type": ["string", "null"],
+      "description": "UI 风格描述"
+    },
+    "character_style": {
+      "type": ["string", "null"],
+      "description": "角色风格描述"
+    },
+    "reference_games": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "参考游戏"
+    },
+    "last_updated": {
+      "type": "string",
+      "format": "date-time",
+      "description": "最后更新时间"
+    }
+  },
+  "$defs": {
+    "Color": {
+      "type": "object",
+      "required": ["hex"],
+      "properties": {
+        "hex": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "description": "HEX 颜色值"
+        },
+        "name": {
+          "type": ["string", "null"],
+          "description": "颜色名称"
+        },
+        "percentage": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 0,
+          "description": "占比百分比"
+        }
+      }
+    },
+    "EffectPattern": {
+      "type": "object",
+      "required": ["name", "description"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "特效名称"
+        },
+        "description": {
+          "type": "string",
+          "description": "特效描述"
+        },
+        "observed_at_steps": {
+          "type": "array",
+          "items": { "type": "integer", "minimum": 0 },
+          "description": "观察到的步骤列表"
+        }
+      }
+    }
+  }
+}

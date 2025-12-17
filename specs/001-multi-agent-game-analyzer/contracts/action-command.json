@@ -1,0 +1,76 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ActionCommand",
+  "description": "游戏操作指令 - Player-Agent 输出",
+  "type": "object",
+  "required": ["step", "action_type", "start_coord"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "操作唯一标识"
+    },
+    "step": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "步骤序号"
+    },
+    "action_type": {
+      "type": "string",
+      "enum": ["click", "drag", "press", "wait", "end"],
+      "description": "操作类型"
+    },
+    "start_coord": {
+      "$ref": "#/$defs/NormalizedCoordinate",
+      "description": "起始坐标"
+    },
+    "end_coord": {
+      "oneOf": [
+        { "$ref": "#/$defs/NormalizedCoordinate" },
+        { "type": "null" }
+      ],
+      "description": "终点坐标 (仅拖动操作)"
+    },
+    "duration": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 10,
+      "default": 0.1,
+      "description": "操作持续时间(秒)"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "时间戳"
+    },
+    "result": {
+      "type": ["string", "null"],
+      "enum": ["success", "failed", "skipped", null],
+      "description": "操作结果"
+    },
+    "reasoning": {
+      "type": ["string", "null"],
+      "description": "AI 决策理由"
+    }
+  },
+  "$defs": {
+    "NormalizedCoordinate": {
+      "type": "object",
+      "required": ["x", "y"],
+      "properties": {
+        "x": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000,
+          "description": "归一化 X 坐标 (0-1000)"
+        },
+        "y": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000,
+          "description": "归一化 Y 坐标 (0-1000)"
+        }
+      }
+    }
+  }
+}
