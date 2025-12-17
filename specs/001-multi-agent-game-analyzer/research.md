@@ -7,12 +7,12 @@
 
 ### 1. AI Framework: LangChain + LangGraph
 
-**Decision**: 使用 LangChain 1.2.1 + 兼容版本的 LangGraph
+**Decision**: 使用 LangChain 1.0+ + LangGraph 1.0+ + google-genai 1.50+
 
 **Rationale**:
-- LangChain 1.2.1 是用户指定版本，提供稳定的 AI 编排能力
-- LangGraph 提供状态机管理，适合多智能体协作的循环工作流
-- 原生支持 Gemini 模型通过 langchain-google-genai
+- LangChain 1.0+ 提供统一的 Agent 抽象 (`create_agent`)
+- LangGraph 1.0+ 提供成熟的状态机管理，适合多智能体协作的循环工作流
+- google-genai 是 Google 官方统一 SDK，支持 Gemini 3 Pro Preview
 - 内置重试、回退等容错机制
 
 **Alternatives Considered**:
@@ -22,10 +22,9 @@
 
 **Compatible Versions**:
 ```
-langchain==1.2.1
-langgraph>=0.2.0  # 与 langchain 1.2.x 兼容
-langchain-google-genai>=2.0.0
-langchain-core>=0.3.0
+langchain>=1.0
+langgraph>=1.0
+google-genai>=1.50
 ```
 
 ### 2. AI Model: Google Gemini

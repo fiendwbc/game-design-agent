@@ -12,10 +12,9 @@
 **Language/Version**: Python 3.11+
 **Package Manager**: uv (用于依赖版本控制)
 **Primary Dependencies**:
-- langchain==1.2.1 (AI 编排框架)
-- langgraph (与 langchain 1.2.1 兼容版本，状态机管理)
-- langchain-google-genai (Gemini 模型集成)
-- google-generativeai (Gemini API 直接调用)
+- langchain>=1.0 (AI 编排框架)
+- langgraph>=1.0 (状态机管理)
+- google-genai>=1.50 (Gemini API 统一 SDK)
 - opencv-python (最新版本，视频处理)
 - mss (高速屏幕截图)
 - pydirectinput (Windows 输入模拟)

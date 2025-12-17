@@ -4,7 +4,10 @@
       "WebSearch",
       "Bash(git fetch:*)",
       "Bash(pwsh:*)",
-      "Bash(powershell:*)"
+      "Bash(powershell:*)",
+      "WebFetch(domain:github.com)",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__get-library-docs"
     ],
     "deny": [],
     "ask": []

@@ -34,7 +34,7 @@
 
 - [ ] T001 Create project directory structure per plan.md in src/
 - [ ] T002 Initialize Python project with uv and create pyproject.toml
-- [ ] T003 Add core dependencies: langchain==1.2.1, langgraph, langchain-google-genai, google-generativeai
+- [ ] T003 Add core dependencies: langchain>=1.0, langgraph>=1.0, google-genai>=1.50
 - [ ] T004 [P] Add utility dependencies: opencv-python, mss, pydirectinput, pydantic>=2.0
 - [ ] T005 [P] Add CLI dependencies: typer, rich
 - [ ] T006 [P] Add dev dependencies: pytest, pytest-asyncio, ruff, mypy

@@ -7,7 +7,7 @@
 - **操作系统**: Windows 10/11
 - **Python**: 3.11+
 - **网络**: 需要访问 Google Gemini API
-- **API Key**: Google AI Studio API Key
+- **API Key**: Google AI Studio API Key (GOOGLE_API_KEY)
 
 ## 安装
 
