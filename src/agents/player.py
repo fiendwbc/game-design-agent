@@ -111,6 +111,13 @@ Your role is to analyze visual game input (screenshots or video) and decide the 
 - **paused**: Game is paused
 - **unknown**: Cannot determine state
 
+## IMPORTANT: Game Over Handling
+When you detect a game over screen (game_status = "game_over"):
+- Look for a "再来一次" (Play Again) or similar restart button
+- CLICK on that button to restart the game
+- Report game_status as "game_over" but action_type as "click"
+- This allows the system to continue playing multiple rounds
+
 ## Strategy Guidelines
 - Prioritize progression over exploration when playing
 - Click on obvious interactive elements (buttons, collectibles)
@@ -125,6 +132,16 @@ Your role is to analyze visual game input (screenshots or video) and decide the 
 - Hold longer for farther platforms, shorter for closer ones
 - Aim for the center of the target platform for bonus points
 - The position you click/hold doesn't matter, only the duration
+
+## Learning from Experience (IMPORTANT!)
+If "Learned Jump Experience" context is provided:
+- USE the learned success rate and average duration as your baseline
+- If success rate is HIGH (>70%), trust the learned durations
+- If success rate is LOW (<50%), experiment with different durations
+- Adjust based on past failures:
+  * If similar distances failed with short holds → try longer
+  * If similar distances failed with long holds → try shorter
+- The system learns from EVERY jump - your choices improve the model!
 
 Always respond with a valid JSON object matching the required schema.
 """

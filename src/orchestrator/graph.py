@@ -40,6 +40,11 @@ class GameState(TypedDict):
     game_over: bool
     level_complete: bool
 
+    # Round tracking for multi-round play
+    current_round: int
+    min_rounds: int
+    round_scores: list[int]  # Score per round
+
     # Analysis results (accumulated by analysis agents)
     analysis_log: Annotated[list[AnalysisLog], add_messages]
 
@@ -53,11 +58,12 @@ class GameState(TypedDict):
     error: Optional[str]
 
 
-def create_initial_state(session: PlaySession) -> GameState:
+def create_initial_state(session: PlaySession, min_rounds: int = 3) -> GameState:
     """Create initial state for a new game session.
 
     Args:
         session: The PlaySession configuration
+        min_rounds: Minimum number of rounds to play before stopping
 
     Returns:
         Initial GameState
@@ -75,6 +81,9 @@ def create_initial_state(session: PlaySession) -> GameState:
         action_result=None,
         game_over=False,
         level_complete=False,
+        current_round=1,
+        min_rounds=min_rounds,
+        round_scores=[],
         analysis_log=[],
         mechanics_state={},
         ui_flow_graph={"nodes": [], "edges": []},
@@ -149,12 +158,14 @@ def build_game_graph() -> StateGraph:
 def run_game_session(
     session: PlaySession,
     on_step: Optional[callable] = None,
+    min_rounds: int = 3,
 ) -> GameState:
     """Run a complete game analysis session.
 
     Args:
         session: PlaySession configuration.
         on_step: Optional callback called after each step with (step, state).
+        min_rounds: Minimum number of rounds to play before stopping.
 
     Returns:
         Final GameState after session completes.
@@ -162,7 +173,7 @@ def run_game_session(
     from .nodes import init_session_resources, cleanup_session_resources
 
     logger = get_logger()
-    logger.info(f"Starting game session: {session.id}")
+    logger.info(f"Starting game session: {session.id} (min rounds: {min_rounds})")
 
     # Initialize session resources
     init_session_resources(
@@ -176,8 +187,8 @@ def run_game_session(
         graph = build_game_graph()
         compiled = graph.compile()
 
-        # Create initial state
-        state = create_initial_state(session)
+        # Create initial state with min_rounds
+        state = create_initial_state(session, min_rounds=min_rounds)
 
         # Calculate recursion limit based on max_steps
         # Each game step has 7 nodes, add buffer for safety

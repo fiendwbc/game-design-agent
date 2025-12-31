@@ -1,13 +1,11 @@
 """CLI entry point for the game analysis system."""
 
 import json
-import sys
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import typer
 from rich.console import Console
-from rich.live import Live
 from rich.panel import Panel
 from rich.progress import (
     BarColumn,
@@ -19,10 +17,10 @@ from rich.progress import (
 )
 from rich.table import Table
 
-from .config import get_config, reset_config, init_langsmith
+from .config import get_config, init_langsmith, reset_config
 from .models import LogLevel, PlayStrategy, SessionStatus
 from .models.session import PlaySession, SessionConfig, WindowRegion
-from .utils.logging import setup_logging, get_logger
+from .utils.logging import get_logger, setup_logging
 
 # Create Typer app
 app = typer.Typer(
@@ -69,7 +67,7 @@ def select_region(
         "-s",
         help="Save configuration to file",
     ),
-    window_title: Optional[str] = typer.Option(
+    window_title: str | None = typer.Option(
         None,
         "--window",
         "-w",
@@ -118,9 +116,9 @@ def select_region(
         console.print(f"Searching for window: [cyan]{window_title}[/cyan]")
         region = selector.select_from_window_title(window_title)
         if region:
-            console.print(f"[green]Found window![/green]")
+            console.print("[green]Found window![/green]")
         else:
-            console.print(f"[red]Window not found[/red]")
+            console.print("[red]Window not found[/red]")
             raise typer.Exit(1)
 
     elif interactive:
@@ -180,7 +178,7 @@ def select_region(
 
 @app.command()
 def run(
-    config_file: Optional[Path] = typer.Option(
+    config_file: Path | None = typer.Option(
         Path("config.json"),
         "--config",
         "-c",
@@ -212,10 +210,18 @@ def run(
         "-l",
         help="Logging level: minimal, detailed, or debug",
     ),
-    region_x: Optional[int] = typer.Option(None, "--x", help="Window region X coordinate (overrides config)"),
-    region_y: Optional[int] = typer.Option(None, "--y", help="Window region Y coordinate (overrides config)"),
-    region_width: Optional[int] = typer.Option(None, "--width", "-W", help="Window region width (overrides config)"),
-    region_height: Optional[int] = typer.Option(None, "--height", "-H", help="Window region height (overrides config)"),
+    region_x: int | None = typer.Option(None, "--x", help="Window region X coordinate (overrides config)"),
+    region_y: int | None = typer.Option(None, "--y", help="Window region Y coordinate (overrides config)"),
+    region_width: int | None = typer.Option(None, "--width", "-W", help="Window region width (overrides config)"),
+    region_height: int | None = typer.Option(None, "--height", "-H", help="Window region height (overrides config)"),
+    min_rounds: int = typer.Option(
+        3,
+        "--min-rounds",
+        "-r",
+        help="Minimum rounds to play before stopping (1-100)",
+        min=1,
+        max=100,
+    ),
     dry_run: bool = typer.Option(
         False,
         "--dry-run",
@@ -228,6 +234,7 @@ def run(
     Starts automated gameplay on the specified window region,
     analyzes the game, and generates design documents.
     Reads window region from config.json by default.
+    Will play at least --min-rounds rounds before stopping.
     """
     from .orchestrator.graph import run_game_session
 
@@ -294,6 +301,7 @@ def run(
     config_table.add_row("Region", f"({x}, {y}) {w}x{h}")
     config_table.add_row("Strategy", strategy.value)
     config_table.add_row("Max Steps", str(max_steps))
+    config_table.add_row("Min Rounds", str(min_rounds))
     config_table.add_row("Output", str(output_dir))
     config_table.add_row("Log Level", log_level.value)
     console.print(config_table)
@@ -330,22 +338,25 @@ def run(
             """Update progress on each step."""
             action = state.get("pending_action")
             action_desc = action.action_type.value if action else "waiting"
+            current_round = state.get("current_round", 1)
             progress.update(
                 task,
                 completed=step,
-                description=f"[cyan]Step {step}: {action_desc}",
+                description=f"[cyan]Round {current_round}/{min_rounds} | Step {step}: {action_desc}",
             )
 
         try:
-            final_state = run_game_session(session, on_step=on_step)
+            final_state = run_game_session(session, on_step=on_step, min_rounds=min_rounds)
 
             # Show results
             console.print()
             status = final_state.get("status", SessionStatus.COMPLETED)
 
             if status == SessionStatus.COMPLETED:
+                rounds_played = final_state.get("current_round", 1)
                 console.print(Panel(
                     f"[green]Session completed successfully![/green]\n\n"
+                    f"Rounds: {rounds_played}\n"
                     f"Steps: {final_state.get('current_step', 0)}\n"
                     f"Output: {output_dir}",
                     title="Session Complete",
@@ -382,7 +393,7 @@ def export(
         "-f",
         help="Export format: markdown, json, or html",
     ),
-    output: Optional[Path] = typer.Option(
+    output: Path | None = typer.Option(
         None,
         "--output",
         "-o",
@@ -415,34 +426,34 @@ def export(
     elif format == "markdown":
         # Generate markdown report
         lines = [
-            f"# Game Analysis Report",
-            f"",
+            "# Game Analysis Report",
+            "",
             f"**Session ID**: {play_log.session_id}",
             f"**Total Actions**: {summary['total_actions']}",
             f"**Duration**: {summary['duration_seconds']:.1f}s",
-            f"",
-            f"## Action Summary",
-            f"",
+            "",
+            "## Action Summary",
+            "",
         ]
 
         for action_type, count in summary["by_type"].items():
             lines.append(f"- {action_type}: {count}")
 
         lines.extend([
-            f"",
-            f"## Results",
-            f"",
+            "",
+            "## Results",
+            "",
         ])
 
         for result_type, count in summary["by_result"].items():
             lines.append(f"- {result_type}: {count}")
 
         lines.extend([
-            f"",
-            f"## Action Log",
-            f"",
-            f"| Step | Action | Coordinates | Result |",
-            f"|------|--------|-------------|--------|",
+            "",
+            "## Action Log",
+            "",
+            "| Step | Action | Coordinates | Result |",
+            "|------|--------|-------------|--------|",
         ])
 
         for entry in play_log._entries:
@@ -526,16 +537,16 @@ def status() -> None:
 
 @app.command()
 def test_capture(
-    config_file: Optional[Path] = typer.Option(
+    config_file: Path | None = typer.Option(
         Path("config.json"),
         "--config",
         "-c",
         help="Path to configuration file",
     ),
-    region_x: Optional[int] = typer.Option(None, "--x", help="Region X coordinate"),
-    region_y: Optional[int] = typer.Option(None, "--y", help="Region Y coordinate"),
-    region_width: Optional[int] = typer.Option(None, "--width", "-W", help="Region width"),
-    region_height: Optional[int] = typer.Option(None, "--height", "-H", help="Region height"),
+    region_x: int | None = typer.Option(None, "--x", help="Region X coordinate"),
+    region_y: int | None = typer.Option(None, "--y", help="Region Y coordinate"),
+    region_width: int | None = typer.Option(None, "--width", "-W", help="Region width"),
+    region_height: int | None = typer.Option(None, "--height", "-H", help="Region height"),
     output: Path = typer.Option(
         Path("./test_capture.png"),
         "--output",
@@ -587,6 +598,136 @@ def test_capture(
     except Exception as e:
         console.print(f"[red]Capture failed: {e}[/red]")
         raise typer.Exit(1)
+
+
+@app.command()
+def test_distance(
+    config_file: Path | None = typer.Option(
+        Path("config.json"),
+        "--config",
+        "-c",
+        help="Path to configuration file",
+    ),
+    region_x: int | None = typer.Option(None, "--x", help="Region X coordinate"),
+    region_y: int | None = typer.Option(None, "--y", help="Region Y coordinate"),
+    region_width: int | None = typer.Option(None, "--width", "-W", help="Region width"),
+    region_height: int | None = typer.Option(None, "--height", "-H", help="Region height"),
+    output: Path = typer.Option(
+        Path("./distance_debug.png"),
+        "--output",
+        "-o",
+        help="Output file path for debug image",
+    ),
+    show: bool = typer.Option(
+        True,
+        "--show/--no-show",
+        help="Open the debug image after saving",
+    ),
+) -> None:
+    """Test jump distance detection with OpenCV.
+
+    Captures a screenshot, analyzes it to detect player and target
+    platforms, draws debug visualization, and saves the result.
+    """
+    import cv2
+
+    from .analysis.jump_analyzer import JumpAnalyzer
+    from .capture.screen import capture_region
+
+    # Default values
+    x, y, w, h = 100, 100, 800, 600
+
+    # Load from config file if exists
+    if config_file and config_file.exists():
+        try:
+            file_config = json.loads(config_file.read_text())
+            if "window_region" in file_config:
+                wr = file_config["window_region"]
+                x = wr.get("x", x)
+                y = wr.get("y", y)
+                w = wr.get("width", w)
+                h = wr.get("height", h)
+                console.print(f"[green]Loaded region from {config_file}[/green]")
+        except Exception as e:
+            console.print(f"[yellow]Warning: Failed to load config: {e}[/yellow]")
+
+    # Command line options override config file
+    if region_x is not None:
+        x = region_x
+    if region_y is not None:
+        y = region_y
+    if region_width is not None:
+        w = region_width
+    if region_height is not None:
+        h = region_height
+
+    console.print(f"Capturing region: ({x}, {y}) {w}x{h}")
+
+    try:
+        # Capture screenshot
+        screenshot = capture_region(x, y, w, h)
+        console.print(f"[green]Screenshot captured: {len(screenshot) / 1024:.1f} KB[/green]")
+
+        # Create analyzer with debug enabled
+        analyzer = JumpAnalyzer(
+            screen_width=w,
+            screen_height=h,
+            debug=True,
+        )
+
+        # Analyze the screenshot
+        analysis = analyzer.analyze(screenshot)
+
+        if analysis is None:
+            console.print("[red]Could not detect player or target platform![/red]")
+            console.print("[yellow]Tips:[/yellow]")
+            console.print("  - Make sure the game window is visible")
+            console.print("  - Player should be standing on a platform")
+            console.print("  - Target platform should be visible")
+            # Save original screenshot for reference
+            Path("./capture_failed.png").write_bytes(screenshot)
+            console.print("[dim]Original screenshot saved to ./capture_failed.png[/dim]")
+            raise typer.Exit(1)
+
+        # Display results
+        table = Table(title="Distance Analysis Result")
+        table.add_column("Property", style="cyan")
+        table.add_column("Value", style="green")
+
+        table.add_row("Player Position", f"({analysis.player_x}, {analysis.player_y})")
+        table.add_row("Target Position", f"({analysis.target_x}, {analysis.target_y})")
+        table.add_row("Distance", f"{analysis.distance_pixels:.1f} pixels")
+        table.add_row("Direction", analysis.direction)
+        table.add_row("Recommended Duration", f"{analysis.get_recommended_duration():.2f} seconds")
+        table.add_row("Confidence", f"{analysis.confidence:.0%}")
+
+        console.print(table)
+
+        # Save debug image
+        if analysis.debug_image is not None:
+            cv2.imwrite(str(output), analysis.debug_image)
+            console.print(f"[green]Debug image saved to {output}[/green]")
+
+            # Open the image
+            if show:
+                import platform
+                import subprocess
+                if platform.system() == "Windows":
+                    subprocess.Popen(["start", "", str(output)], shell=True)
+                elif platform.system() == "Darwin":
+                    subprocess.Popen(["open", str(output)])
+                else:
+                    subprocess.Popen(["xdg-open", str(output)])
+        else:
+            console.print("[yellow]No debug image generated[/yellow]")
+
+    except typer.Exit:
+        raise
+    except Exception as e:
+        console.print(f"[red]Analysis failed: {e}[/red]")
+        import traceback
+        traceback.print_exc()
+        raise typer.Exit(1) from None
 
 
 if __name__ == "__main__":
