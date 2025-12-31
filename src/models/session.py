@@ -58,12 +58,20 @@ class ActionCommand(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     step: int = Field(..., ge=0, description="Step number in session")
     action_type: ActionType
-    start_coord: NormalizedCoordinate
+    start_coord: Optional[NormalizedCoordinate] = Field(
+        default=None, description="Start coordinate for click/hold/drag"
+    )
     end_coord: Optional[NormalizedCoordinate] = Field(
         default=None, description="End coordinate for drag operations"
     )
     duration: float = Field(
-        default=0.1, ge=0, le=10.0, description="Action duration in seconds"
+        default=0.1, ge=0, le=10.0, description="Action duration in seconds (for hold action)"
+    )
+    key: Optional[str] = Field(
+        default=None, description="Keyboard key for press action"
+    )
+    wait_time: Optional[float] = Field(
+        default=None, ge=0.1, le=10.0, description="Wait duration for wait action"
     )
     timestamp: datetime = Field(default_factory=datetime.now)
     result: Optional[ActionResult] = None

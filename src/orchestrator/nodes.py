@@ -349,27 +349,32 @@ def check_continue_node(state: dict[str, Any]) -> dict[str, Any]:
     error = state.get("error")
 
     new_state = state.copy()
+    session_ended = False
 
     # Check termination conditions
     if error:
         log_step(step, f"Ending due to error: {error}", level="error")
         new_state["should_continue"] = False
         new_state["status"] = SessionStatus.FAILED
+        session_ended = True
 
     elif step >= max_steps:
         log_step(step, f"Max steps ({max_steps}) reached, ending session")
         new_state["should_continue"] = False
         new_state["status"] = SessionStatus.COMPLETED
+        session_ended = True
 
     elif state.get("game_over"):
         log_step(step, "Game over, ending session")
         new_state["should_continue"] = False
         new_state["status"] = SessionStatus.COMPLETED
+        session_ended = True
 
     elif state.get("level_complete"):
         log_step(step, "Level complete, ending session")
         new_state["should_continue"] = False
         new_state["status"] = SessionStatus.COMPLETED
+        session_ended = True
 
     else:
         new_state["should_continue"] = True
@@ -379,7 +384,44 @@ def check_continue_node(state: dict[str, Any]) -> dict[str, Any]:
     if step > 0 and step % 10 == 0:
         _log_session_summary(step)
 
+    # Generate experience summary when session ends
+    if session_ended and _play_log:
+        _generate_and_log_experience(state)
+
     return new_state
+
+
+def _generate_and_log_experience(state: dict[str, Any]) -> None:
+    """Generate and log experience summary after session ends.
+
+    Args:
+        state: Final game state.
+    """
+    if _play_log is None:
+        return
+
+    try:
+        # Generate and print experience report
+        report = _play_log.format_experience_report()
+        print("\n" + report)
+
+        # Save experience summary to file
+        exp_summary = _play_log.generate_experience_summary()
+
+        # Add game state info
+        exp_summary["game_over"] = state.get("game_over", False)
+        exp_summary["level_complete"] = state.get("level_complete", False)
+        exp_summary["final_step"] = state.get("current_step", 0)
+
+        # Save to file
+        if _play_log.output_dir:
+            import json
+            exp_path = _play_log.output_dir / f"experience_{_play_log.session_id}.json"
+            exp_path.write_text(json.dumps(exp_summary, indent=2, ensure_ascii=False))
+            _logger.info(f"Experience summary saved to: {exp_path}")
+
+    except Exception as e:
+        _logger.error(f"Failed to generate experience summary: {e}")
 
 
 def _log_session_summary(step: int) -> None:

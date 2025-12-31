@@ -33,8 +33,9 @@ class ActionType(str, Enum):
     """Type of game action."""
 
     CLICK = "click"  # Single click
+    HOLD = "hold"  # Long press/hold at position (for games like Jump Jump)
     DRAG = "drag"  # Drag from start to end
-    PRESS = "press"  # Press and hold
+    PRESS = "press"  # Press keyboard key
     WAIT = "wait"  # Wait/observe
     END = "end"  # End session
 

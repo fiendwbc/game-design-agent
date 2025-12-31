@@ -35,6 +35,7 @@ class PlayerDecision(BaseModel):
     y: Optional[int] = Field(None, ge=0, le=1000)
     end_x: Optional[int] = Field(None, ge=0, le=1000)
     end_y: Optional[int] = Field(None, ge=0, le=1000)
+    duration: Optional[float] = Field(None, ge=0.1, le=5.0, description="Hold duration in seconds")
     key: Optional[str] = None
     wait_time: Optional[float] = Field(None, ge=0.1, le=10.0)
     reasoning: str
@@ -48,12 +49,13 @@ PLAYER_DECISION_SCHEMA = {
     "properties": {
         "action_type": {
             "type": "string",
-            "enum": ["click", "drag", "press", "wait"],
+            "enum": ["click", "hold", "drag", "press", "wait"],
         },
         "x": {"type": "integer", "minimum": 0, "maximum": 1000},
         "y": {"type": "integer", "minimum": 0, "maximum": 1000},
         "end_x": {"type": "integer", "minimum": 0, "maximum": 1000},
         "end_y": {"type": "integer", "minimum": 0, "maximum": 1000},
+        "duration": {"type": "number", "minimum": 0.1, "maximum": 5.0},
         "key": {"type": "string"},
         "wait_time": {"type": "number", "minimum": 0.1, "maximum": 10.0},
         "reasoning": {"type": "string"},
@@ -80,16 +82,25 @@ Your role is to analyze visual game input (screenshots or video) and decide the 
 
 ## Available Actions
 1. **click**: Click at a specific position (x, y)
-2. **drag**: Drag from (x, y) to (end_x, end_y)
-3. **press**: Press a keyboard key (e.g., "space", "enter", "up", "down")
-4. **wait**: Wait for a specified time (0.1-10 seconds)
+2. **hold**: Long press at position (x, y) with duration (0.1-5.0 seconds)
+   - IMPORTANT: Use this for games where press duration matters (e.g., "Jump Jump/跳一跳")
+   - The longer you hold, the stronger/further the action (jump distance, power, etc.)
+   - Estimate distance between objects and adjust duration accordingly:
+     * Short distance: 0.2-0.5 seconds
+     * Medium distance: 0.5-1.0 seconds
+     * Long distance: 1.0-2.0 seconds
+     * Very long distance: 2.0-3.0 seconds
+3. **drag**: Drag from (x, y) to (end_x, end_y)
+4. **press**: Press a keyboard key (e.g., "space", "enter", "up", "down")
+5. **wait**: Wait for a specified time (0.1-10 seconds)
 
 ## Decision Process
 1. Analyze the current game state from the visual input
 2. Identify interactive elements (buttons, characters, objects)
 3. Determine the game status (playing, game_over, menu, etc.)
 4. Choose the most appropriate action
-5. Provide clear reasoning for your choice
+5. For "hold" actions, carefully estimate the required duration based on visual distance
+6. Provide clear reasoning for your choice
 
 ## Game Status Detection
 - **playing**: Normal gameplay in progress
@@ -103,9 +114,17 @@ Your role is to analyze visual game input (screenshots or video) and decide the 
 ## Strategy Guidelines
 - Prioritize progression over exploration when playing
 - Click on obvious interactive elements (buttons, collectibles)
+- Use **hold** for games requiring timed/charged actions (jumping games, power meters)
 - Use keyboard controls for movement when applicable
 - Wait when transitions or animations are occurring
 - Avoid clicking on non-interactive UI elements
+
+## Jump Jump (跳一跳) Specific Tips
+- The character jumps based on how long you press
+- Look at the distance between current platform and target platform
+- Hold longer for farther platforms, shorter for closer ones
+- Aim for the center of the target platform for bonus points
+- The position you click/hold doesn't matter, only the duration
 
 Always respond with a valid JSON object matching the required schema.
 """
@@ -244,11 +263,17 @@ Respond with a JSON object specifying the action to take.
         if decision.end_x is not None and decision.end_y is not None:
             end_coord = NormalizedCoordinate(x=decision.end_x, y=decision.end_y)
 
+        # Set duration for HOLD actions
+        duration = 0.1  # default
+        if decision.action_type == ActionType.HOLD and decision.duration is not None:
+            duration = decision.duration
+
         return ActionCommand(
             step=step,
             action_type=decision.action_type,
             start_coord=start_coord,
             end_coord=end_coord,
+            duration=duration,
             key=decision.key,
             wait_time=decision.wait_time,
             reasoning=decision.reasoning,

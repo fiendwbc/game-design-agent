@@ -179,9 +179,16 @@ def run_game_session(
         # Create initial state
         state = create_initial_state(session)
 
-        # Run the graph
+        # Calculate recursion limit based on max_steps
+        # Each game step has 7 nodes, add buffer for safety
+        recursion_limit = (session.config.max_steps + 10) * 7
+
+        # Run the graph with increased recursion limit
         final_state = None
-        for step_state in compiled.stream(state):
+        for step_state in compiled.stream(
+            state,
+            {"recursion_limit": recursion_limit},
+        ):
             # Get the actual state from the step output
             if isinstance(step_state, dict):
                 for node_name, node_state in step_state.items():

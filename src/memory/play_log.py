@@ -25,6 +25,7 @@ class PlayLogEntry(BaseModel):
     start_y: Optional[int] = None
     end_x: Optional[int] = None
     end_y: Optional[int] = None
+    duration: Optional[float] = None  # Hold duration in seconds
     key: Optional[str] = None
     wait_time: Optional[float] = None
     reasoning: str
@@ -101,9 +102,10 @@ class PlayLog:
             start_y=action.start_coord.y if action.start_coord else None,
             end_x=action.end_coord.x if action.end_coord else None,
             end_y=action.end_coord.y if action.end_coord else None,
+            duration=action.duration if action.action_type == ActionType.HOLD else None,
             key=action.key,
             wait_time=action.wait_time,
-            reasoning=action.reasoning,
+            reasoning=action.reasoning or "",
             result=result,
             screenshot_path=screenshot_path,
             video_path=video_path,
@@ -326,6 +328,8 @@ class PlayLog:
             action_desc = f"Step {entry.step}: {entry.action_type.value}"
             if entry.action_type == ActionType.CLICK and entry.start_x is not None:
                 action_desc += f" at ({entry.start_x}, {entry.start_y})"
+            elif entry.action_type == ActionType.HOLD and entry.duration is not None:
+                action_desc += f" for {entry.duration:.2f}s at ({entry.start_x}, {entry.start_y})"
             elif entry.action_type == ActionType.DRAG:
                 action_desc += f" from ({entry.start_x}, {entry.start_y}) to ({entry.end_x}, {entry.end_y})"
             elif entry.action_type == ActionType.PRESS:
@@ -338,6 +342,150 @@ class PlayLog:
                 action_desc += f" - {entry.observation}"
 
             lines.append(f"  {action_desc}")
+
+        return "\n".join(lines)
+
+    def get_hold_actions(self) -> list[PlayLogEntry]:
+        """Get all hold actions.
+
+        Returns:
+            List of hold action entries.
+        """
+        return [e for e in self._entries if e.action_type == ActionType.HOLD]
+
+    def analyze_hold_patterns(self) -> dict:
+        """Analyze hold action patterns for experience summary.
+
+        Returns:
+            Analysis dictionary with hold patterns.
+        """
+        hold_actions = self.get_hold_actions()
+        if not hold_actions:
+            return {"total_holds": 0}
+
+        durations = [e.duration for e in hold_actions if e.duration is not None]
+
+        return {
+            "total_holds": len(hold_actions),
+            "min_duration": min(durations) if durations else 0,
+            "max_duration": max(durations) if durations else 0,
+            "avg_duration": sum(durations) / len(durations) if durations else 0,
+            "durations": durations,
+        }
+
+    def generate_experience_summary(self) -> dict:
+        """Generate experience summary after game over.
+
+        Analyzes the play log to extract lessons learned,
+        especially useful for games like Jump Jump.
+
+        Returns:
+            Experience summary dictionary.
+        """
+        summary = self.summarize()
+        hold_analysis = self.analyze_hold_patterns()
+
+        # Find the last few actions before game over
+        last_actions = self.get_recent(5)
+
+        # Analyze what might have gone wrong
+        insights = []
+        recommendations = []
+
+        # Analyze hold durations
+        if hold_analysis["total_holds"] > 0:
+            avg_duration = hold_analysis["avg_duration"]
+            insights.append(f"执行了 {hold_analysis['total_holds']} 次长按操作")
+            insights.append(f"长按时间范围: {hold_analysis['min_duration']:.2f}s - {hold_analysis['max_duration']:.2f}s")
+            insights.append(f"平均长按时间: {avg_duration:.2f}s")
+
+            # Check if last action was a hold (likely the failing jump)
+            if last_actions and last_actions[0].action_type == ActionType.HOLD:
+                last_hold = last_actions[0]
+                insights.append(f"最后一次跳跃长按了 {last_hold.duration:.2f}s")
+
+                # Provide recommendations
+                if last_hold.duration and last_hold.duration < 0.3:
+                    recommendations.append("最后一跳时间太短，可能跳得不够远")
+                    recommendations.append("尝试增加长按时间来跳得更远")
+                elif last_hold.duration and last_hold.duration > 2.0:
+                    recommendations.append("最后一跳时间较长，可能跳过头了")
+                    recommendations.append("尝试减少长按时间来控制距离")
+
+        # Analyze overall performance
+        total = summary.get("total_actions", 0)
+        successful = summary.get("by_result", {}).get("success", 0)
+        if total > 0:
+            success_rate = successful / total * 100
+            insights.append(f"总共执行了 {total} 次操作，成功率 {success_rate:.1f}%")
+
+        # Game duration
+        duration = summary.get("duration_seconds", 0)
+        if duration > 0:
+            insights.append(f"游戏持续了 {duration:.1f} 秒")
+
+        # General recommendations
+        if hold_analysis["total_holds"] > 0:
+            recommendations.append("观察平台间距，近距离用短按，远距离用长按")
+            recommendations.append("建议长按时间: 近(0.2-0.5s), 中(0.5-1.0s), 远(1.0-2.0s)")
+
+        return {
+            "session_id": self.session_id,
+            "total_steps": total,
+            "success_rate": successful / total * 100 if total > 0 else 0,
+            "duration_seconds": duration,
+            "hold_analysis": hold_analysis,
+            "insights": insights,
+            "recommendations": recommendations,
+            "last_actions": [
+                {
+                    "step": e.step,
+                    "action": e.action_type.value,
+                    "duration": e.duration,
+                    "reasoning": e.reasoning,
+                }
+                for e in last_actions
+            ],
+        }
+
+    def format_experience_report(self) -> str:
+        """Generate formatted experience report string.
+
+        Returns:
+            Human-readable experience report.
+        """
+        exp = self.generate_experience_summary()
+
+        lines = [
+            "=" * 50,
+            "游戏经验总结 (Experience Summary)",
+            "=" * 50,
+            "",
+            "📊 统计数据:",
+        ]
+
+        for insight in exp["insights"]:
+            lines.append(f"  • {insight}")
+
+        if exp["recommendations"]:
+            lines.append("")
+            lines.append("💡 改进建议:")
+            for rec in exp["recommendations"]:
+                lines.append(f"  • {rec}")
+
+        if exp["last_actions"]:
+            lines.append("")
+            lines.append("📝 最后几步操作:")
+            for action in exp["last_actions"]:
+                action_str = f"  Step {action['step']}: {action['action']}"
+                if action["duration"]:
+                    action_str += f" ({action['duration']:.2f}s)"
+                if action["reasoning"]:
+                    action_str += f" - {action['reasoning'][:30]}..."
+                lines.append(action_str)
+
+        lines.append("")
+        lines.append("=" * 50)
 
         return "\n".join(lines)
 

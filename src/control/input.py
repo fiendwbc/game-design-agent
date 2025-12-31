@@ -129,6 +129,8 @@ class InputController:
             match action.action_type:
                 case ActionType.CLICK:
                     return self._execute_click(action)
+                case ActionType.HOLD:
+                    return self._execute_hold(action)
                 case ActionType.DRAG:
                     return self._execute_drag(action)
                 case ActionType.PRESS:
@@ -168,6 +170,42 @@ class InputController:
         pydirectinput.click()
         time.sleep(self.click_delay)
 
+        return ActionResult.SUCCESS
+
+    def _execute_hold(self, action: ActionCommand) -> ActionResult:
+        """Execute a hold/long press action.
+
+        Used for games like Jump Jump where press duration controls jump distance.
+
+        Args:
+            action: ActionCommand with hold details.
+                - start_coord: Position to hold at
+                - duration: How long to hold in seconds
+
+        Returns:
+            ActionResult.
+        """
+        if not action.start_coord:
+            self._logger.error("Hold action missing start_coord")
+            return ActionResult.FAILED
+
+        screen_x, screen_y = self.normalizer.to_screen(action.start_coord)
+        hold_duration = action.duration if action.duration else 0.5
+
+        self._logger.debug(
+            f"Hold at normalized ({action.start_coord.x}, {action.start_coord.y}) "
+            f"-> screen ({screen_x}, {screen_y}) for {hold_duration:.3f}s"
+        )
+
+        # Move to position
+        pydirectinput.moveTo(screen_x, screen_y)
+
+        # Press and hold
+        pydirectinput.mouseDown()
+        time.sleep(hold_duration)
+        pydirectinput.mouseUp()
+
+        time.sleep(self.click_delay)
         return ActionResult.SUCCESS
 
     def _execute_drag(self, action: ActionCommand) -> ActionResult:
@@ -269,6 +307,28 @@ class InputController:
             action_type=ActionType.CLICK,
             start_coord=NormalizedCoordinate(x=x, y=y),
             reasoning="Direct click",
+        )
+        return self.execute_action(action)
+
+    def hold(self, x: int, y: int, duration: float = 0.5) -> ActionResult:
+        """Hold/long press at normalized coordinates.
+
+        Used for games like Jump Jump where press duration controls jump distance.
+
+        Args:
+            x: Normalized X coordinate (0-1000).
+            y: Normalized Y coordinate (0-1000).
+            duration: Hold duration in seconds (default 0.5).
+
+        Returns:
+            ActionResult.
+        """
+        action = ActionCommand(
+            step=0,
+            action_type=ActionType.HOLD,
+            start_coord=NormalizedCoordinate(x=x, y=y),
+            duration=duration,
+            reasoning="Direct hold",
         )
         return self.execute_action(action)
 
@@ -388,6 +448,29 @@ def click(
     return controller.click(x, y)
 
 
+def hold(
+    region: WindowRegion,
+    x: int,
+    y: int,
+    duration: float = 0.5,
+) -> ActionResult:
+    """Hold/long press at normalized coordinates.
+
+    Used for games like Jump Jump where press duration controls jump distance.
+
+    Args:
+        region: Window region for normalization.
+        x: Normalized X coordinate (0-1000).
+        y: Normalized Y coordinate (0-1000).
+        duration: Hold duration in seconds (default 0.5).
+
+    Returns:
+        ActionResult.
+    """
+    controller = InputController(region)
+    return controller.hold(x, y, duration)
+
+
 def drag(
     region: WindowRegion,
     start_x: int,
@@ -444,6 +527,7 @@ __all__ = [
     "CoordinateNormalizer",
     "InputController",
     "click",
+    "hold",
     "drag",
     "press_key",
     "type_text",
